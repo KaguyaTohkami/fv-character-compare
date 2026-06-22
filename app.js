@@ -107,11 +107,24 @@ const detailOwner = $("detailOwner");
 const detailEditButton = $("detailEditButton");
 const detailDeleteButton = $("detailDeleteButton");
 
+function bindClick(element, handler) {
+  if (element) element.addEventListener("click", handler);
+}
+
+function bindChange(element, handler) {
+  if (element) element.addEventListener("change", handler);
+}
+
+function bindInput(element, handler) {
+  if (element) element.addEventListener("input", handler);
+}
+
 function safeRequiredDomCheck() {
   const requiredIds = [
     "statusPanel",
     "accountToggleButton",
     "loginButton",
+    "displayResetButton",
     "searchInput",
     "filterCategory",
     "characters",
@@ -1395,48 +1408,48 @@ function escapeHtml(text) {
     .replaceAll("'", "&#039;");
 }
 
-refreshDataButton.addEventListener("click", refreshData);
-clearCacheButton.addEventListener("click", clearLocalCache);
-accountToggleButton.addEventListener("click", toggleLoginPanel);
-loginButton.addEventListener("click", login);
-logoutButton.addEventListener("click", logout);
+bindClick(refreshDataButton, refreshData);
+bindClick(clearCacheButton, clearLocalCache);
+bindClick(accountToggleButton, toggleLoginPanel);
+bindClick(loginButton, login);
+bindClick(logoutButton, logout);
 
-createUserButton.addEventListener("click", createUser);
-updateUserButton.addEventListener("click", () => updateUser());
-cancelUserEditButton.addEventListener("click", clearUserForm);
-refreshUsersButton.addEventListener("click", loadUsers);
+bindClick(createUserButton, createUser);
+bindClick(updateUserButton, () => updateUser());
+bindClick(cancelUserEditButton, clearUserForm);
+bindClick(refreshUsersButton, loadUsers);
 
-submitButton.addEventListener("click", submitEntry);
-cancelEditButton.addEventListener("click", () => {
+bindClick(submitButton, submitEntry);
+bindClick(cancelEditButton, () => {
   clearForm();
   render();
 });
 
-addCategoryButton.addEventListener("click", addCategory);
-searchInput.addEventListener("input", () => {
+bindClick(addCategoryButton, addCategory);
+bindInput(searchInput, () => {
   clearTimeout(searchRenderTimer);
   searchRenderTimer = setTimeout(render, 180);
 });
-filterCategory.addEventListener("change", render);
-compareCandidateSelect.addEventListener("change", () => {
+bindChange(filterCategory, render);
+bindChange(compareCandidateSelect, () => {
   if (compareCandidateSelect.value) selectedDisplaySlotId = selectedDisplaySlotId || selectedDisplayIds[0] || null;
 });
-replaceDisplayButton.addEventListener("click", replaceDisplayCharacter);
-displayResetButton.addEventListener("click", resetDisplaySelection);
-overlapModeSelect.addEventListener("change", event => setOverlapMode(event.target.value));
+bindClick(replaceDisplayButton, replaceDisplayCharacter);
+bindClick(displayResetButton, resetDisplaySelection);
+bindChange(overlapModeSelect, event => setOverlapMode(event.target.value));
 
-closeModalButton.addEventListener("click", closeDetail);
-modalBackdrop.addEventListener("click", closeDetail);
+bindClick(closeModalButton, closeDetail);
+bindClick(modalBackdrop, closeDetail);
 
-detailEditButton.addEventListener("click", () => {
+bindClick(detailEditButton, () => {
   if (detailTargetId) startEdit(detailTargetId);
 });
 
-detailDeleteButton.addEventListener("click", () => {
+bindClick(detailDeleteButton, () => {
   if (detailTargetId) deleteEntry(detailTargetId);
 });
 
-scrollToFormButton.addEventListener("click", () => {
+bindClick(scrollToFormButton, () => {
   clearForm();
   formPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 });
