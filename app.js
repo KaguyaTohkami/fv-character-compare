@@ -97,6 +97,7 @@ const searchInput = $("searchInput");
 const filterCategory = $("filterCategory");
 const compareCandidateSelect = $("compareCandidateSelect");
 const replaceDisplayButton = $("replaceDisplayButton");
+const displayCandidateCheckboxes = $("displayCandidateCheckboxes");
 const displayResetButton = $("displayResetButton");
 const overlapModeSelect = $("overlapModeSelect");
 const displayZoomSelect = $("displayZoomSelect");
@@ -1087,41 +1088,77 @@ function getSearchFilteredEntries() {
     });
 }
 
+function toggleDisplayCandidate(id, checked) {
+  const target = entries.find(entry => entry.id === id && entry.visible);
+
+  if (!target) return;
+
+  if (checked) {
+    if (!selectedDisplayIds.includes(id)) {
+      selectedDisplayIds.push(id);
+    }
+
+    selectedDisplaySlotId = id;
+  } else {
+    selectedDisplayIds = selectedDisplayIds.filter(displayId => displayId !== id);
+
+    if (selectedDisplaySlotId === id) {
+      selectedDisplaySlotId = selectedDisplayIds[0] || null;
+    }
+  }
+
+  selectedDisplayIds = [...new Set(selectedDisplayIds)];
+  saveDisplayIds();
+  render();
+}
+
 function renderCandidateSelect() {
-  const current = compareCandidateSelect.value;
+  if (!displayCandidateCheckboxes) return;
+
   const keyword = searchInput.value.trim();
   const selectedCategory = filterCategory.value;
   const candidates = getSearchFilteredEntries();
 
-  compareCandidateSelect.innerHTML = `<option value="">人物を選択</option>`;
+  displayCandidateCheckboxes.innerHTML = "";
 
   const visibleCandidates =
     keyword || selectedCategory !== "all"
       ? candidates.slice(0, 80)
       : candidates.slice(0, 30);
 
+  if (visibleCandidates.length === 0) {
+    displayCandidateCheckboxes.innerHTML = `<p class="meta">表示できる人物がいません。</p>`;
+    return;
+  }
+
   visibleCandidates.forEach(entry => {
-    const option = document.createElement("option");
-    option.value = entry.id;
-    option.textContent = `${entry.name} / ${getGenderLabel(entry.gender)} / ${formatHeight(entry.height)}cm`;
-    compareCandidateSelect.appendChild(option);
+    const label = document.createElement("label");
+    label.className = "display-candidate-chip";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = entry.id;
+    checkbox.checked = selectedDisplayIds.includes(entry.id);
+    checkbox.addEventListener("change", () => toggleDisplayCandidate(entry.id, checkbox.checked));
+
+    const text = document.createElement("span");
+    text.innerHTML = `<strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(getGenderLabel(entry.gender))} / ${escapeHtml(formatHeight(entry.height))}cm</small>`;
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    displayCandidateCheckboxes.appendChild(label);
   });
 
   if (candidates.length > visibleCandidates.length) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = `候補が多いため検索してください（${candidates.length}件）`;
-    option.disabled = true;
-    compareCandidateSelect.appendChild(option);
-  }
-
-  if (visibleCandidates.some(entry => entry.id === current)) {
-    compareCandidateSelect.value = current;
+    const note = document.createElement("p");
+    note.className = "meta candidate-note";
+    note.textContent = `候補が多いため、検索で絞り込んでください（${candidates.length}件）`;
+    displayCandidateCheckboxes.appendChild(note);
   }
 }
 
 function replaceDisplayCharacter() {
-  const candidateId = compareCandidateSelect.value;
+  const candidateId = compareCandidateSelect ? compareCandidateSelect.value : "";
 
   if (!candidateId) {
     alert("表示する人物を選択してください");
@@ -1191,9 +1228,13 @@ function setOverlapMode(value) {
 }
 
 function getDisplayEntries() {
-  return selectedDisplayIds
+  const displayEntries = selectedDisplayIds
     .map(id => entries.find(entry => entry.id === id && entry.visible))
     .filter(Boolean);
+
+  if (displayEntries.length > 0) return displayEntries;
+
+  return getLatestEntries(DEFAULT_DISPLAY_COUNT);
 }
 
 function getFilteredEntries() {
@@ -1399,7 +1440,7 @@ function renderCharacters() {
     characters.innerHTML = `
       <div class="display-empty">
         表示するキャラクターがいません。<br>
-        右上の検索から人物を選び、左上のプルダウンで表示に追加してください。
+        上の検索から人物にチェックを入れて表示してください。
       </div>
     `;
     return;
@@ -1422,8 +1463,10 @@ function renderCharacters() {
     visual.className = "character-visual";
     visual.style.height = `${getZoomedCompareHeight()}px`;
 
-    const figure = document.createElement("div");
-    figure.className = `figure gender-${normalizeGender(entry.gender)}`;
+    const figure = document.createElement("img");
+    figure.className = `figure-image gender-${normalizeGender(entry.gender)}`;
+    figure.src = getSilhouetteImage(entry.gender);
+    figure.alt = `${entry.name}のシルエット`;
     figure.style.height = `${getVisualHeight(entry.height)}px`;
     figure.style.setProperty("--char-color", displayColor);
     figure.title = getColorLabel();

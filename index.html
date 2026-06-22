@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Tohkami" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="stylesheet" href="style.css?v=17" />
+  <link rel="stylesheet" href="style.css?v=18" />
 </head>
 <body>
   <main class="app">
@@ -97,30 +97,41 @@
       <div id="userList"></div>
     </section>
 
-    <section class="compare-area" aria-label="身長比較画面">
-      <div class="compare-toolbar">
-        <div class="compare-toolbar-left">
-          <select id="compareCandidateSelect" aria-label="表示する人物を選択">
-            <option value="">人物を選択</option>
-          </select>
-          <button id="replaceDisplayButton" type="button" class="small-button">表示/入替</button>
-          <button id="displayResetButton" type="button" class="small-button">表示リセット</button>
-        </div>
+    <section class="panel compare-control-panel">
+      <div class="section-head">
+        <h2>表示人物</h2>
+        <button id="displayResetButton" type="button" class="small-button">表示リセット</button>
+      </div>
 
-        <div class="compare-toolbar-right">
-          <select id="overlapModeSelect" aria-label="シルエットの重なり方">
-            <option value="none">被せなし</option>
-            <option value="half">半分被せ</option>
-          </select>
+      <div class="compare-control-grid">
+        <label>
+          人物検索
+          <input id="searchInput" type="search" placeholder="名前で検索" aria-label="人物検索" />
+        </label>
+
+        <label>
+          表示倍率
           <select id="displayZoomSelect" aria-label="表示倍率">
             <option value="0.8">80%</option>
             <option value="1">100%</option>
             <option value="1.2">120%</option>
             <option value="1.4">140%</option>
           </select>
-          <input id="searchInput" type="search" placeholder="人物検索" aria-label="人物検索" />
-        </div>
+        </label>
+
+        <label>
+          重なり
+          <select id="overlapModeSelect" aria-label="シルエットの重なり方">
+            <option value="none">被せなし</option>
+            <option value="half">半分被せ</option>
+          </select>
+        </label>
       </div>
+
+      <div id="displayCandidateCheckboxes" class="display-candidate-checkboxes"></div>
+    </section>
+
+    <section class="compare-area" aria-label="身長比較画面">
       <div id="scale" class="scale"></div>
       <div id="heightRuler" class="height-ruler"></div>
       <div id="characters" class="characters"></div>
@@ -249,6 +260,6 @@
         .catch(console.warn);
     }
   </script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
