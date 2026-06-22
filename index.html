@@ -3,26 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FVキャラクター比較</title>
+  <title>ストグラFVキャラクター身長比較</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#222222" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="FV比較" />
+  <meta name="apple-mobile-web-app-title" content="ストグラFV比較" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="app">
     <header class="header">
-      <h1>FVキャラクター比較</h1>
-      <p>誰でも閲覧可能。管理者・モデレーター・編集者で権限を分けて管理できます。</p>
+      <div class="header-main">
+        <div class="header-copy">
+          <h1>ストグラFVキャラクター比較</h1>
+          <p>誰でも閲覧可能。管理者・モデレーター・編集者で権限を分けて、ストグラFVキャラクターを管理できます。</p>
+        </div>
+        <div class="header-tools">
+          <span id="headerLoginBadge" class="header-login-badge">未ログイン</span>
+          <button id="accountToggleButton" type="button" class="header-account-button">ログイン</button>
+        </div>
+      </div>
     </header>
 
     <section id="statusPanel" class="status-panel">読み込み中...</section>
 
-    <section class="panel login-panel">
+    <section id="loginPanel" class="panel login-panel hidden">
       <div class="section-head">
-        <h2>ログイン</h2>
+        <h2>アカウント</h2>
         <span id="loginStatus" class="login-status">未ログイン</span>
       </div>
 
@@ -90,20 +98,31 @@
     </section>
 
     <section class="compare-area" aria-label="身長比較画面">
+      <div class="compare-toolbar">
+        <div class="compare-toolbar-left">
+          <select id="compareCandidateSelect" aria-label="表示する人物を選択">
+            <option value="">人物を選択</option>
+          </select>
+          <button id="replaceDisplayButton" type="button" class="small-button">表示/入替</button>
+          <button id="displayResetButton" type="button" class="small-button">表示リセット</button>
+        </div>
+
+        <div class="compare-toolbar-right">
+          <select id="overlapModeSelect" aria-label="シルエットの重なり方">
+            <option value="none">被せなし</option>
+            <option value="half">半分被せ</option>
+          </select>
+          <input id="searchInput" type="search" placeholder="人物検索" aria-label="人物検索" />
+        </div>
+      </div>
       <div id="scale" class="scale"></div>
       <div id="heightRuler" class="height-ruler"></div>
       <div id="characters" class="characters"></div>
     </section>
 
-    <section class="panel compact-panel">
+    <section class="panel compact-panel filter-panel">
       <h2>絞り込み</h2>
-
-      <label>
-        名前検索
-        <input id="searchInput" type="text" placeholder="名前で検索" />
-      </label>
-
-      <label>
+<label>
         カテゴリー
         <select id="filterCategory">
           <option value="all">すべて</option>
@@ -111,7 +130,7 @@
       </label>
     </section>
 
-    <section class="panel">
+    <section class="panel list-panel">
       <div class="section-head">
         <h2>登録一覧</h2>
         <button id="scrollToFormButton" type="button" class="small-button">新規追加</button>
@@ -130,21 +149,15 @@
 
       <label>
         身長 cm
-        <input id="heightInput" type="number" placeholder="例：175" />
+        <input id="heightInput" type="number" step="0.1" inputmode="decimal" placeholder="例：175.5" />
       </label>
-
-      <label>
-        色
-        <input id="colorInput" type="color" value="#4b6fa9" />
-      </label>
-
-      <label>
+<label>
         キャラクター画像
         <input id="imageInput" type="file" accept="image/*" />
       </label>
 
       <p id="imageHelpText" class="form-help">
-        画像は詳細画面に表示されます。未選択の場合は色つきシルエットになります。
+        画像は詳細画面に表示されます。未選択の場合は自動識別色のシルエットになります。色は登録せず、表示時に自動で割り当てます。
       </p>
 
       <div class="category-block">
