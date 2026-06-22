@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FVキャラクター比較</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#222222" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="FV比較" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>FVキャラクター比較</h1>
+      <p>誰でも閲覧可能。管理者・モデレーター・編集者で権限を分けて管理できます。</p>
+    </header>
+
+    <section id="statusPanel" class="status-panel">読み込み中...</section>
+
+    <section class="panel login-panel">
+      <div class="section-head">
+        <h2>ログイン</h2>
+        <span id="loginStatus" class="login-status">未ログイン</span>
+      </div>
+
+      <div id="loginForm">
+        <label>
+          ユーザーID
+          <input id="loginUsernameInput" type="text" placeholder="ユーザーID" autocomplete="username" />
+        </label>
+
+        <label>
+          パスワード
+          <input id="loginPasswordInput" type="password" placeholder="パスワード" autocomplete="current-password" />
+        </label>
+
+        <button id="loginButton" type="button" class="primary-button">ログイン</button>
+      </div>
+
+      <div id="loggedInActions" class="hidden">
+        <button id="logoutButton" type="button" class="secondary-button">ログアウト</button>
+      </div>
+    </section>
+
+    <section id="adminPanel" class="panel hidden">
+      <h2>管理者メニュー</h2>
+      <p class="form-help">
+        管理者だけがユーザーを作成・編集できます。モデレーターは全キャラ編集可、編集者は自分のキャラのみ編集可です。
+      </p>
+
+      <label>
+        ユーザーID
+        <input id="userUsernameInput" type="text" placeholder="例：editor01" />
+      </label>
+
+      <label>
+        表示名
+        <input id="userDisplayNameInput" type="text" placeholder="例：輝哉" />
+      </label>
+
+      <label>
+        権限
+        <select id="userRoleInput">
+          <option value="editor">編集者</option>
+          <option value="moderator">モデレーター</option>
+          <option value="admin">管理者</option>
+        </select>
+      </label>
+
+      <label>
+        初期/再設定パスワード
+        <input id="userPasswordInput" type="password" placeholder="新規作成または変更時に入力" />
+      </label>
+
+      <div class="form-actions">
+        <button id="createUserButton" type="button" class="primary-button">ユーザーを作成</button>
+        <button id="updateUserButton" type="button" class="secondary-button hidden">ユーザーを更新</button>
+        <button id="cancelUserEditButton" type="button" class="secondary-button hidden">ユーザー編集キャンセル</button>
+      </div>
+
+      <div class="section-head user-list-head">
+        <h3>ユーザー一覧</h3>
+        <button id="refreshUsersButton" type="button" class="small-button">更新</button>
+      </div>
+
+      <div id="userList"></div>
+    </section>
+
+    <section class="compare-area" aria-label="身長比較画面">
+      <div id="scale" class="scale"></div>
+      <div id="heightRuler" class="height-ruler"></div>
+      <div id="characters" class="characters"></div>
+    </section>
+
+    <section class="panel compact-panel">
+      <h2>絞り込み</h2>
+
+      <label>
+        名前検索
+        <input id="searchInput" type="text" placeholder="名前で検索" />
+      </label>
+
+      <label>
+        カテゴリー
+        <select id="filterCategory">
+          <option value="all">すべて</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>登録一覧</h2>
+        <button id="scrollToFormButton" type="button" class="small-button">新規追加</button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section id="formPanel" class="panel">
+      <h2 id="formTitle">キャラクター追加</h2>
+      <p id="formPermissionText" class="form-help">追加・編集にはログインが必要です。</p>
+
+      <label>
+        名前
+        <input id="nameInput" type="text" placeholder="キャラクター名" />
+      </label>
+
+      <label>
+        身長 cm
+        <input id="heightInput" type="number" placeholder="例：175" />
+      </label>
+
+      <label>
+        色
+        <input id="colorInput" type="color" value="#4b6fa9" />
+      </label>
+
+      <label>
+        キャラクター画像
+        <input id="imageInput" type="file" accept="image/*" />
+      </label>
+
+      <p id="imageHelpText" class="form-help">
+        画像は詳細画面に表示されます。未選択の場合は色つきシルエットになります。
+      </p>
+
+      <div class="category-block">
+        <p class="label-title">カテゴリー</p>
+        <div id="categoryCheckboxes" class="category-checkboxes"></div>
+      </div>
+
+      <div class="category-add">
+        <input id="newCategoryInput" type="text" placeholder="新規カテゴリー名" />
+        <button id="addCategoryButton" type="button">追加</button>
+      </div>
+
+      <div class="form-actions">
+        <button id="submitButton" type="button" class="primary-button">キャラクター追加</button>
+        <button id="cancelEditButton" type="button" class="secondary-button hidden">編集キャンセル</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="detailModal" class="modal hidden">
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+
+    <div class="modal-content">
+      <button id="closeModalButton" class="modal-close" type="button">×</button>
+
+      <div id="detailImageArea" class="detail-image-area"></div>
+
+      <h2 id="detailName"></h2>
+
+      <div class="detail-info">
+        <p>
+          <span>身長</span>
+          <strong id="detailHeight"></strong>
+        </p>
+
+        <p>
+          <span>カテゴリー</span>
+          <strong id="detailCategories"></strong>
+        </p>
+
+        <p>
+          <span>登録者</span>
+          <strong id="detailOwner"></strong>
+        </p>
+      </div>
+
+      <div class="detail-actions">
+        <button id="detailEditButton" type="button">編集</button>
+        <button id="detailDeleteButton" type="button" class="danger-button">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
