@@ -92,6 +92,7 @@ const formPanel = $("formPanel");
 const newCategoryInput = $("newCategoryInput");
 const addCategoryButton = $("addCategoryButton");
 const categoryCheckboxes = $("categoryCheckboxes");
+const categoryManageList = $("categoryManageList");
 
 const searchInput = $("searchInput");
 const filterCategory = $("filterCategory");
@@ -791,6 +792,44 @@ function renderCategoryCheckboxes(selectedCategories = getSelectedCategories()) 
   });
 }
 
+function renderCategoryManageList() {
+  if (!categoryManageList) return;
+
+  categoryManageList.innerHTML = "";
+
+  if (!currentUser || !["admin", "moderator"].includes(currentUser.role)) {
+    categoryManageList.innerHTML = `<p class="meta">カテゴリー編集・削除は管理者またはモデレーターのみ可能です。</p>`;
+    return;
+  }
+
+  categories.forEach(category => {
+    const row = document.createElement("div");
+    row.className = "category-manage-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = category;
+    input.placeholder = "カテゴリー名";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "small-button";
+    saveButton.textContent = "保存";
+    saveButton.onclick = () => renameCategory(category, input.value);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "small-button danger-button";
+    deleteButton.textContent = "削除";
+    deleteButton.onclick = () => deleteCategory(category);
+
+    row.appendChild(input);
+    row.appendChild(saveButton);
+    row.appendChild(deleteButton);
+    categoryManageList.appendChild(row);
+  });
+}
+
 function renderFilterCategoryOptions() {
   const current = filterCategory.value;
   filterCategory.innerHTML = `<option value="all">すべて</option>`;
@@ -861,6 +900,56 @@ async function addCategory() {
   } catch (error) {
     alert(error.message);
     setStatus(`カテゴリー追加失敗：${error.message}`, "error");
+  }
+}
+
+async function renameCategory(oldName, newName) {
+  if (!currentUser || !["admin", "moderator"].includes(currentUser.role)) {
+    alert("カテゴリー編集は管理者またはモデレーターのみ可能です");
+    return;
+  }
+
+  const nextName = String(newName || "").trim();
+
+  if (!nextName) {
+    alert("カテゴリー名を入力してください");
+    return;
+  }
+
+  if (oldName === nextName) {
+    return;
+  }
+
+  try {
+    setStatus("カテゴリー名を変更中...");
+    await apiRequest(DATA_API_URL, "renameCategory", { oldName, newName: nextName });
+    await loadData({ force: true });
+    setStatus("カテゴリー名を変更しました", "ok");
+  } catch (error) {
+    alert(error.message);
+    setStatus(`カテゴリー変更失敗：${error.message}`, "error");
+  }
+}
+
+async function deleteCategory(name) {
+  if (!currentUser || !["admin", "moderator"].includes(currentUser.role)) {
+    alert("カテゴリー削除は管理者またはモデレーターのみ可能です");
+    return;
+  }
+
+  const usedCount = entries.filter(entry => (entry.categories || []).includes(name)).length;
+  const ok = confirm(`カテゴリー「${name}」を削除しますか？\n${usedCount}件のキャラクターからもこのカテゴリーが外れます。`);
+
+  if (!ok) return;
+
+  try {
+    setStatus("カテゴリー削除中...");
+    await apiRequest(DATA_API_URL, "deleteCategory", { name });
+    await loadData({ force: true });
+    setStatus("カテゴリーを削除しました", "ok");
+  } catch (error) {
+    alert(error.message);
+    setStatus(`カテゴリー削除失敗：${error.message}`, "error");
   }
 }
 
@@ -1448,10 +1537,12 @@ function renderCharacters() {
 
   filtered.forEach((entry, index) => {
     const displayColor = displayColorMap.get(entry.id) || AUTO_COLOR_PALETTE[0];
+    const visualHeight = getVisualHeight(entry.height);
 
     const wrapper = document.createElement("div");
     wrapper.className = "character";
     wrapper.style.zIndex = String(index + 1);
+    wrapper.style.width = `${Math.max(78, Math.round(visualHeight * 0.28))}px`;
 
     if (entry.id === selectedDisplaySlotId) {
       wrapper.classList.add("selected-display-slot");
@@ -1467,7 +1558,7 @@ function renderCharacters() {
     figure.className = `figure-image gender-${normalizeGender(entry.gender)}`;
     figure.src = getSilhouetteImage(entry.gender);
     figure.alt = `${entry.name}のシルエット`;
-    figure.style.height = `${getVisualHeight(entry.height)}px`;
+    figure.style.height = `${visualHeight}px`;
     figure.style.setProperty("--char-color", displayColor);
     figure.title = getColorLabel();
 
@@ -1590,6 +1681,7 @@ function renderList() {
 
 function render() {
   renderFilterCategoryOptions();
+  renderCategoryManageList();
   renderCandidateSelect();
   renderScale();
   renderHeightRuler();

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Tohkami" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body>
   <main class="app">
@@ -195,6 +195,12 @@
         <button id="addCategoryButton" type="button">追加</button>
       </div>
 
+      <details id="categoryManagePanel" class="category-manage">
+        <summary>カテゴリー編集・削除</summary>
+        <p class="form-help">カテゴリー名の変更・削除は全体に反映されます。</p>
+        <div id="categoryManageList" class="category-manage-list"></div>
+      </details>
+
       <div class="draft-row">
         <span id="draftStatusText" class="draft-status">入力内容はCookieに一時保存されます</span>
         <button id="clearDraftButton" type="button" class="small-button">入力一時保存を削除</button>
@@ -260,6 +266,6 @@
         .catch(console.warn);
     }
   </script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

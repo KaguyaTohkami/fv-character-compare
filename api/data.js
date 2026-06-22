@@ -79,6 +79,10 @@ function canManageCharacter(user, character) {
   return user.role === "editor" && character.owner_user_id === user.id;
 }
 
+function canManageCategory(user) {
+  return Boolean(user && (user.role === "admin" || user.role === "moderator"));
+}
+
 async function ensureDefaultCategories(db) {
   const rows = DEFAULT_CATEGORIES.map((name, index) => ({
     name,
@@ -202,6 +206,98 @@ module.exports = async function handler(req, res) {
         .upsert({ name }, { onConflict: "name" });
 
       if (error) throw new Error(error.message);
+
+      return json(res, 200, { ok: true });
+    }
+
+    if (action === "renameCategory") {
+      if (!canManageCategory(user)) return json(res, 403, { error: "カテゴリー編集権限がありません" });
+
+      const oldName = String(body.oldName || "").trim();
+      const newName = String(body.newName || "").trim();
+
+      if (!oldName || !newName) return json(res, 400, { error: "カテゴリー名が空です" });
+      if (oldName === newName) return json(res, 200, { ok: true });
+
+      const { data: existingRows, error: existingError } = await db
+        .from("fv_categories")
+        .select("name")
+        .eq("name", newName)
+        .limit(1);
+
+      if (existingError) throw new Error(existingError.message);
+      if (existingRows && existingRows.length > 0) {
+        return json(res, 409, { error: "同じ名前のカテゴリーがすでに存在します" });
+      }
+
+      const { error: categoryError } = await db
+        .from("fv_categories")
+        .update({ name: newName })
+        .eq("name", oldName);
+
+      if (categoryError) throw new Error(categoryError.message);
+
+      const { data: characterRows, error: fetchError } = await db
+        .from("fv_characters")
+        .select("id,categories");
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      for (const character of characterRows || []) {
+        const currentCategories = Array.isArray(character.categories) ? character.categories : [];
+        if (!currentCategories.includes(oldName)) continue;
+
+        const nextCategories = [...new Set(currentCategories.map(category => category === oldName ? newName : category))];
+
+        const { error: updateError } = await db
+          .from("fv_characters")
+          .update({
+            categories: nextCategories,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", character.id);
+
+        if (updateError) throw new Error(updateError.message);
+      }
+
+      return json(res, 200, { ok: true });
+    }
+
+    if (action === "deleteCategory") {
+      if (!canManageCategory(user)) return json(res, 403, { error: "カテゴリー削除権限がありません" });
+
+      const name = String(body.name || "").trim();
+      if (!name) return json(res, 400, { error: "カテゴリー名が空です" });
+
+      const { error: categoryError } = await db
+        .from("fv_categories")
+        .delete()
+        .eq("name", name);
+
+      if (categoryError) throw new Error(categoryError.message);
+
+      const { data: characterRows, error: fetchError } = await db
+        .from("fv_characters")
+        .select("id,categories");
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      for (const character of characterRows || []) {
+        const currentCategories = Array.isArray(character.categories) ? character.categories : [];
+        if (!currentCategories.includes(name)) continue;
+
+        const nextCategories = currentCategories.filter(category => category !== name);
+
+        const { error: updateError } = await db
+          .from("fv_characters")
+          .update({
+            categories: nextCategories,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", character.id);
+
+        if (updateError) throw new Error(updateError.message);
+      }
 
       return json(res, 200, { ok: true });
     }

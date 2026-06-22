@@ -1360,3 +1360,79 @@ button:disabled {
     margin-left: -28px;
   }
 }
+
+
+/* v22 true height + category management */
+.figure-image {
+  max-width: none !important;
+  width: auto !important;
+  height: auto;
+}
+
+.figure-image.gender-female {
+  max-width: none !important;
+}
+
+.character {
+  min-width: 78px;
+  width: auto;
+}
+
+.character-visual {
+  width: 100%;
+}
+
+.character-label {
+  width: max(118px, 100%);
+}
+
+.characters.overlap-none {
+  gap: 42px;
+}
+
+.characters.overlap-half .character {
+  margin-left: -24px;
+}
+
+.category-manage {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eeeeee;
+}
+
+.category-manage summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.category-manage-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-manage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-manage-row input {
+  min-height: 38px;
+}
+
+@media (max-width: 760px) {
+  .characters.overlap-none {
+    gap: 30px;
+  }
+
+  .characters.overlap-half .character {
+    margin-left: -20px;
+  }
+
+  .category-manage-row {
+    grid-template-columns: 1fr;
+  }
+}
