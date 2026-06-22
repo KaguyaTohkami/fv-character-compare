@@ -1486,3 +1486,29 @@ button:disabled {
 .character {
   min-width: 78px;
 }
+
+
+/* v24 shift silhouettes away from scale numbers */
+.characters {
+  left: 120px !important;
+  min-width: calc(100% - 120px) !important;
+}
+
+.display-empty {
+  margin-left: 0;
+}
+
+@media (max-width: 760px) {
+  .characters {
+    left: 104px !important;
+    min-width: calc(100% - 104px) !important;
+  }
+
+  .height-ruler {
+    left: 12px;
+  }
+
+  .ruler-label {
+    left: 24px;
+  }
+}
