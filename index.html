@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KTキャラクタースケール</title>
+  <title>Tohkami Scale</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#f7f7f4" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Tohkami" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body>
   <main class="app">
@@ -17,7 +17,7 @@
       <div class="header-main">
         <div class="header-copy">
           <h1>Tohkami Scale</h1>
-          <p>キャラクターを、身長・カテゴリーから比較できるスケールツールです。</p>
+          <p>ストグラFVキャラクターを、身長・カテゴリーから比較できる管理型スケールツールです。</p>
         </div>
         <div class="header-tools">
           <span id="headerLoginBadge" class="header-login-badge">未ログイン</span>
@@ -112,6 +112,12 @@
             <option value="none">被せなし</option>
             <option value="half">半分被せ</option>
           </select>
+          <select id="displayZoomSelect" aria-label="表示倍率">
+            <option value="0.8">80%</option>
+            <option value="1">100%</option>
+            <option value="1.2">120%</option>
+            <option value="1.4">140%</option>
+          </select>
           <input id="searchInput" type="search" placeholder="人物検索" aria-label="人物検索" />
         </div>
       </div>
@@ -151,6 +157,14 @@
         身長 cm
         <input id="heightInput" type="number" step="0.1" inputmode="decimal" placeholder="例：175.5" />
       </label>
+
+      <label>
+        性別
+        <select id="genderInput">
+          <option value="male">男性</option>
+          <option value="female">女性</option>
+        </select>
+      </label>
 <label>
         キャラクター画像
         <input id="imageInput" type="file" accept="image/*" />
@@ -168,6 +182,11 @@
       <div class="category-add">
         <input id="newCategoryInput" type="text" placeholder="新規カテゴリー名" />
         <button id="addCategoryButton" type="button">追加</button>
+      </div>
+
+      <div class="draft-row">
+        <span id="draftStatusText" class="draft-status">入力内容はCookieに一時保存されます</span>
+        <button id="clearDraftButton" type="button" class="small-button">入力一時保存を削除</button>
       </div>
 
       <div class="form-actions">
@@ -191,6 +210,11 @@
         <p>
           <span>身長</span>
           <strong id="detailHeight"></strong>
+        </p>
+
+        <p>
+          <span>性別</span>
+          <strong id="detailGender"></strong>
         </p>
 
         <p>
@@ -225,6 +249,6 @@
         .catch(console.warn);
     }
   </script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

@@ -9,7 +9,10 @@ const TOKEN_STORAGE_KEY = "fv_auth_token";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 const DISPLAY_SELECTION_KEY = "fv_compare_display_selection_v1";
 const OVERLAP_MODE_KEY = "fv_compare_overlap_mode_v1";
+const ZOOM_MODE_KEY = "fv_compare_zoom_mode_v1";
 const DEFAULT_DISPLAY_COUNT = 5;
+const FORM_DRAFT_COOKIE_NAME = "tohkami_form_draft";
+const FORM_DRAFT_MAX_AGE_SECONDS = 60 * 60 * 24 * 3;
 const API_TIMEOUT_MS = 9000;
 
 let categories = [];
@@ -23,6 +26,7 @@ let isLoginPanelOpen = false;
 let selectedDisplayIds = [];
 let selectedDisplaySlotId = null;
 let overlapMode = localStorage.getItem(OVERLAP_MODE_KEY) || "none";
+let displayZoom = Number(localStorage.getItem(ZOOM_MODE_KEY) || "1");
 let searchRenderTimer = null;
 
 const $ = id => document.getElementById(id);
@@ -71,12 +75,15 @@ const userList = $("userList");
 
 const nameInput = $("nameInput");
 const heightInput = $("heightInput");
+const genderInput = $("genderInput");
 const imageInput = $("imageInput");
 const submitButton = $("submitButton");
 const cancelEditButton = $("cancelEditButton");
 const formTitle = $("formTitle");
 const formPermissionText = $("formPermissionText");
 const imageHelpText = $("imageHelpText");
+const draftStatusText = $("draftStatusText");
+const clearDraftButton = $("clearDraftButton");
 const scrollToFormButton = $("scrollToFormButton");
 const formPanel = $("formPanel");
 
@@ -90,6 +97,7 @@ const compareCandidateSelect = $("compareCandidateSelect");
 const replaceDisplayButton = $("replaceDisplayButton");
 const displayResetButton = $("displayResetButton");
 const overlapModeSelect = $("overlapModeSelect");
+const displayZoomSelect = $("displayZoomSelect");
 
 const characters = $("characters");
 const list = $("list");
@@ -102,6 +110,7 @@ const closeModalButton = $("closeModalButton");
 const detailImageArea = $("detailImageArea");
 const detailName = $("detailName");
 const detailHeight = $("detailHeight");
+const detailGender = $("detailGender");
 const detailCategories = $("detailCategories");
 const detailOwner = $("detailOwner");
 const detailEditButton = $("detailEditButton");
@@ -234,6 +243,7 @@ function loadDataCache() {
 
     ensureDisplaySelection();
     renderCategoryCheckboxes([]);
+    restoreFormDraft();
     render();
     setStatus(`キャッシュ表示中：${minutes}分前のデータを表示しています。同期中...`, "cached");
     return true;
@@ -277,6 +287,7 @@ async function loadData(options = {}) {
     ensureDisplaySelection();
     setStatus("サーバー同期済み", "ok");
     renderCategoryCheckboxes([]);
+    restoreFormDraft();
     render();
   } catch (error) {
     console.error(error);
@@ -578,9 +589,40 @@ function formatHeight(value) {
     : String(Math.round(number * 10) / 10);
 }
 
+function getSilhouetteImage(gender) {
+  return normalizeGender(gender) === "female"
+    ? "assets/silhouette-female.png"
+    : "assets/silhouette-male.png";
+}
+
+function getGenderLabel(gender) {
+  return gender === "female" ? "女性" : "男性";
+}
+
+function normalizeGender(gender) {
+  return gender === "female" ? "female" : "male";
+}
+
+function normalizeZoom(value) {
+  const zoom = Number(value);
+  return [0.8, 1, 1.2, 1.4].includes(zoom) ? zoom : 1;
+}
+
+function getZoomedCompareHeight() {
+  return COMPARE_AREA_HEIGHT * displayZoom;
+}
+
+function setDisplayZoom(value) {
+  displayZoom = normalizeZoom(value);
+  localStorage.setItem(ZOOM_MODE_KEY, String(displayZoom));
+  renderScale();
+  renderHeightRuler();
+  renderCharacters();
+}
+
 function getVisualHeight(cm) {
   const safeHeight = Math.max(0, Math.min(Number(cm) || 0, MAX_HEIGHT_CM));
-  return (safeHeight / MAX_HEIGHT_CM) * COMPARE_AREA_HEIGHT;
+  return (safeHeight / MAX_HEIGHT_CM) * getZoomedCompareHeight();
 }
 
 function resizeImageFile(file, maxSize = 900, quality = 0.82) {
@@ -623,6 +665,106 @@ function resizeImageFile(file, maxSize = 900, quality = 0.82) {
   });
 }
 
+function setCookieValue(name, value, maxAgeSeconds = FORM_DRAFT_MAX_AGE_SECONDS) {
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Max-Age=${maxAgeSeconds}; Path=/; SameSite=Lax`;
+}
+
+function getCookieValue(name) {
+  const target = `${encodeURIComponent(name)}=`;
+  const parts = document.cookie ? document.cookie.split("; ") : [];
+  const found = parts.find(part => part.startsWith(target));
+
+  return found ? decodeURIComponent(found.slice(target.length)) : "";
+}
+
+function deleteCookieValue(name) {
+  document.cookie = `${encodeURIComponent(name)}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
+
+function readFormDraftCookie() {
+  try {
+    const raw = getCookieValue(FORM_DRAFT_COOKIE_NAME);
+    if (!raw) return null;
+
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== "object") return null;
+
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function collectFormDraft() {
+  return {
+    name: nameInput.value.trim(),
+    height: heightInput.value,
+    gender: normalizeGender(genderInput.value),
+    categories: getSelectedCategories(),
+    savedAt: Date.now()
+  };
+}
+
+function saveFormDraft() {
+  if (editingId) return;
+
+  const draft = collectFormDraft();
+  const hasDraft =
+    draft.name ||
+    draft.height ||
+    draft.gender !== "male" ||
+    draft.categories.length > 0;
+
+  if (!hasDraft) {
+    deleteCookieValue(FORM_DRAFT_COOKIE_NAME);
+    updateDraftStatus("");
+    return;
+  }
+
+  setCookieValue(FORM_DRAFT_COOKIE_NAME, JSON.stringify(draft));
+  updateDraftStatus("入力内容をCookieに一時保存しました");
+}
+
+function restoreFormDraft() {
+  if (editingId) return false;
+
+  const draft = readFormDraftCookie();
+  if (!draft) {
+    updateDraftStatus("入力内容はCookieに一時保存されます");
+    return false;
+  }
+
+  nameInput.value = draft.name || "";
+  heightInput.value = draft.height || "";
+  genderInput.value = normalizeGender(draft.gender);
+
+  const savedCategories = Array.isArray(draft.categories) ? draft.categories : [];
+  renderCategoryCheckboxes(savedCategories);
+
+  const savedAt = draft.savedAt ? new Date(draft.savedAt) : null;
+  updateDraftStatus(savedAt ? `Cookieから一時保存を復元しました（${savedAt.toLocaleString()}）` : "Cookieから一時保存を復元しました");
+  return true;
+}
+
+function clearFormDraftCookie(showMessage = true) {
+  deleteCookieValue(FORM_DRAFT_COOKIE_NAME);
+
+  if (showMessage) {
+    updateDraftStatus("一時保存を削除しました");
+  }
+}
+
+function updateDraftStatus(message) {
+  if (!draftStatusText) return;
+
+  draftStatusText.textContent = message || "入力内容はCookieに一時保存されます";
+}
+
+function scheduleFormDraftSave() {
+  clearTimeout(window.__tohkamiDraftTimer);
+  window.__tohkamiDraftTimer = setTimeout(saveFormDraft, 250);
+}
+
 function renderCategoryCheckboxes(selectedCategories = getSelectedCategories()) {
   categoryCheckboxes.innerHTML = "";
 
@@ -635,6 +777,7 @@ function renderCategoryCheckboxes(selectedCategories = getSelectedCategories()) 
     checkbox.value = category;
     checkbox.name = "categories";
     checkbox.checked = selectedCategories.includes(category);
+    checkbox.addEventListener("change", scheduleFormDraftSave);
 
     const text = document.createElement("span");
     text.textContent = category;
@@ -665,10 +808,12 @@ function getSelectedCategories() {
   return [...document.querySelectorAll('input[name="categories"]:checked')].map(input => input.value);
 }
 
-function clearForm() {
+function clearForm(options = {}) {
+  const clearDraft = options.clearDraft !== false;
   editingId = null;
   nameInput.value = "";
   heightInput.value = "";
+  genderInput.value = "male";
   imageInput.value = "";
   renderCategoryCheckboxes([]);
 
@@ -676,6 +821,12 @@ function clearForm() {
   submitButton.textContent = "キャラクター追加";
   cancelEditButton.classList.add("hidden");
   imageHelpText.textContent = "画像は詳細画面に表示されます。未選択の場合は自動識別色のシルエットになります。色は登録せず、表示時に自動で割り当てます。";
+
+  if (clearDraft) {
+    clearFormDraftCookie(false);
+  }
+
+  updateDraftStatus("入力内容はCookieに一時保存されます");
 }
 
 async function addCategory() {
@@ -703,6 +854,7 @@ async function addCategory() {
     newCategoryInput.value = "";
     await loadData();
     renderCategoryCheckboxes([...selected, newCategory]);
+    scheduleFormDraftSave();
   } catch (error) {
     alert(error.message);
     setStatus(`カテゴリー追加失敗：${error.message}`, "error");
@@ -717,6 +869,7 @@ async function submitEntry() {
 
   const name = nameInput.value.trim();
   const height = Number(heightInput.value);
+  const gender = normalizeGender(genderInput.value);
   const selectedCategories = getSelectedCategories();
 
   if (!name) return alert("キャラクター名を入力してください");
@@ -736,6 +889,7 @@ async function submitEntry() {
     id: editingId,
     name,
     height,
+    gender,
     categories: selectedCategories,
     imageDataUrl
   };
@@ -744,6 +898,7 @@ async function submitEntry() {
     submitButton.disabled = true;
     setStatus(editingId ? "キャラクター更新中..." : "キャラクター追加中...");
     await apiRequest(DATA_API_URL, editingId ? "updateCharacter" : "addCharacter", payload);
+    clearFormDraftCookie(false);
     clearForm();
     await loadData();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -768,6 +923,7 @@ function startEdit(id) {
 
   nameInput.value = entry.name;
   heightInput.value = entry.height;
+  genderInput.value = normalizeGender(entry.gender);
   imageInput.value = "";
 
   renderCategoryCheckboxes(entry.categories || []);
@@ -776,6 +932,7 @@ function startEdit(id) {
   submitButton.textContent = "編集内容を保存";
   cancelEditButton.classList.remove("hidden");
   imageHelpText.textContent = "画像を選び直すと差し替えます。未選択なら現在の画像を維持します。";
+  updateDraftStatus("編集中はCookie一時保存を停止しています");
 
   closeDetail();
   formPanel.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -838,8 +995,10 @@ function openDetail(id) {
     img.alt = entry.name;
     detailImageArea.appendChild(img);
   } else {
-    const noImage = document.createElement("div");
-    noImage.className = "detail-no-image";
+    const noImage = document.createElement("img");
+    noImage.className = `detail-silhouette-image gender-${normalizeGender(entry.gender)}`;
+    noImage.src = getSilhouetteImage(entry.gender);
+    noImage.alt = `${entry.name}のシルエット`;
     const detailDisplayColor = buildDisplayColorMap(getFilteredEntries()).get(entry.id) || AUTO_COLOR_PALETTE[0];
     noImage.style.setProperty("--char-color", detailDisplayColor);
     detailImageArea.appendChild(noImage);
@@ -847,6 +1006,7 @@ function openDetail(id) {
 
   detailName.textContent = entry.name;
   detailHeight.textContent = `${formatHeight(entry.height)}cm`;
+  detailGender.textContent = getGenderLabel(entry.gender);
   detailCategories.textContent = (entry.categories || []).join("、");
   detailOwner.textContent = entry.owner_display_name || "不明";
 
@@ -941,7 +1101,7 @@ function renderCandidateSelect() {
   visibleCandidates.forEach(entry => {
     const option = document.createElement("option");
     option.value = entry.id;
-    option.textContent = `${entry.name} / ${formatHeight(entry.height)}cm`;
+    option.textContent = `${entry.name} / ${getGenderLabel(entry.gender)} / ${formatHeight(entry.height)}cm`;
     compareCandidateSelect.appendChild(option);
   });
 
@@ -1045,13 +1205,14 @@ function renderScale() {
     const line = document.createElement("div");
     line.className = "scale-line";
     line.style.bottom = `${getVisualHeight(cm)}px`;
-    line.textContent = cm % 50 === 0 || cm === MAX_HEIGHT_CM ? `${cm} cm` : "";
+    line.textContent = "";
     scale.appendChild(line);
   }
 }
 
 function renderHeightRuler() {
   heightRuler.innerHTML = "";
+  heightRuler.style.height = `${getZoomedCompareHeight()}px`;
 
   for (let cm = 0; cm <= MAX_HEIGHT_CM; cm += 10) {
     const tick = document.createElement("div");
@@ -1059,14 +1220,6 @@ function renderHeightRuler() {
     tick.className = isMajor ? "ruler-tick major" : "ruler-tick";
     tick.style.bottom = `${getVisualHeight(cm)}px`;
     heightRuler.appendChild(tick);
-
-    if (isMajor || cm === MAX_HEIGHT_CM) {
-      const label = document.createElement("div");
-      label.className = "ruler-label";
-      label.style.bottom = `${getVisualHeight(cm)}px`;
-      label.textContent = `${cm}`;
-      heightRuler.appendChild(label);
-    }
   }
 }
 
@@ -1228,6 +1381,7 @@ function getColorLabel() {
 
 function renderCharacters() {
   characters.innerHTML = "";
+  characters.style.height = `${getZoomedCompareHeight()}px`;
 
   characters.classList.toggle("overlap-half", overlapMode === "half");
   characters.classList.toggle("overlap-none", overlapMode !== "half");
@@ -1264,9 +1418,10 @@ function renderCharacters() {
 
     const visual = document.createElement("div");
     visual.className = "character-visual";
+    visual.style.height = `${getZoomedCompareHeight()}px`;
 
     const figure = document.createElement("div");
-    figure.className = "figure";
+    figure.className = `figure gender-${normalizeGender(entry.gender)}`;
     figure.style.height = `${getVisualHeight(entry.height)}px`;
     figure.style.setProperty("--char-color", displayColor);
     figure.title = getColorLabel();
@@ -1349,7 +1504,7 @@ function renderList() {
 
     info.innerHTML = `
       <strong>${escapeHtml(entry.name)}</strong>
-      <div class="meta list-color-line"><span class="color-dot" style="--dot-color: ${escapeHtml(displayColor)}"></span>${escapeHtml(getColorLabel())} / ${formatHeight(entry.height)}cm / ${(entry.categories || []).map(escapeHtml).join("、")}</div>
+      <div class="meta list-color-line"><span class="color-dot" style="--dot-color: ${escapeHtml(displayColor)}"></span>${escapeHtml(getColorLabel())} / ${getGenderLabel(entry.gender)} / ${formatHeight(entry.height)}cm / ${(entry.categories || []).map(escapeHtml).join("、")}</div>
       <div class="meta">登録者: ${escapeHtml(entry.owner_display_name || "不明")} / ${entry.visible ? "表示中" : "非表示中"}</div>
     `;
 
@@ -1420,11 +1575,18 @@ bindClick(cancelUserEditButton, clearUserForm);
 bindClick(refreshUsersButton, loadUsers);
 
 bindClick(submitButton, submitEntry);
+bindClick(clearDraftButton, () => {
+  clearFormDraftCookie(true);
+  clearForm({ clearDraft: false });
+});
 bindClick(cancelEditButton, () => {
   clearForm();
   render();
 });
 
+bindInput(nameInput, scheduleFormDraftSave);
+bindInput(heightInput, scheduleFormDraftSave);
+bindChange(genderInput, scheduleFormDraftSave);
 bindClick(addCategoryButton, addCategory);
 bindInput(searchInput, () => {
   clearTimeout(searchRenderTimer);
@@ -1437,6 +1599,7 @@ bindChange(compareCandidateSelect, () => {
 bindClick(replaceDisplayButton, replaceDisplayCharacter);
 bindClick(displayResetButton, resetDisplaySelection);
 bindChange(overlapModeSelect, event => setOverlapMode(event.target.value));
+bindChange(displayZoomSelect, event => setDisplayZoom(event.target.value));
 
 bindClick(closeModalButton, closeDetail);
 bindClick(modalBackdrop, closeDetail);
@@ -1456,5 +1619,6 @@ bindClick(scrollToFormButton, () => {
 
 renderCategoryCheckboxes([]);
 if (overlapModeSelect) overlapModeSelect.value = overlapMode;
+if (displayZoomSelect) displayZoomSelect.value = String(displayZoom);
 loadMe();
 loadData();

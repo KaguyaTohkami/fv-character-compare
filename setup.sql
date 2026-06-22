@@ -25,6 +25,7 @@ create table if not exists public.fv_characters (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   height numeric not null check (height > 0),
+  gender text not null default 'male' check (gender in ('male', 'female')),
   color text not null default '#4b6fa9',
   categories text[] not null default '{}',
   image_url text,
@@ -34,6 +35,12 @@ create table if not exists public.fv_characters (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+-- 既存テーブル向け：性別カラムを追加
+alter table public.fv_characters
+  add column if not exists gender text not null default 'male'
+  check (gender in ('male', 'female'));
 
 alter table public.fv_users enable row level security;
 alter table public.fv_categories enable row level security;

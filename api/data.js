@@ -139,7 +139,7 @@ async function listData(db) {
 
   const { data: characterRows, error: characterError } = await db
     .from("fv_characters")
-    .select("id,name,height,color,categories,image_url,visible,owner_user_id,created_at")
+    .select("id,name,height,color,gender,categories,image_url,visible,owner_user_id,created_at")
     .order("height", { ascending: false });
 
   if (characterError) throw new Error(characterError.message);
@@ -166,6 +166,7 @@ async function listData(db) {
         name: row.name,
         height: row.height,
         color: row.color,
+        gender: row.gender || "male",
         categories: row.categories || [],
         image: row.image_url || "",
         visible: row.visible !== false,
@@ -209,6 +210,7 @@ module.exports = async function handler(req, res) {
       const id = crypto.randomUUID();
       const name = String(body.name || "").trim();
       const height = Number(body.height);
+      const gender = body.gender === "female" ? "female" : "male";
       const categories = Array.isArray(body.categories) ? body.categories : [];
       const color = String(body.color || "#4b6fa9");
 
@@ -222,6 +224,7 @@ module.exports = async function handler(req, res) {
         id,
         name,
         height,
+        gender,
         categories,
         color,
         image_url: image.image_url,
@@ -281,6 +284,7 @@ module.exports = async function handler(req, res) {
 
       const name = String(body.name || "").trim();
       const height = Number(body.height);
+      const gender = body.gender === "female" ? "female" : "male";
       const categories = Array.isArray(body.categories) ? body.categories : [];
       const color = String(body.color || "#4b6fa9");
 
@@ -291,6 +295,7 @@ module.exports = async function handler(req, res) {
       const updateData = {
         name,
         height,
+        gender,
         categories,
         color,
         updated_at: new Date().toISOString()
