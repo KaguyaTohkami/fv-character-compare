@@ -283,7 +283,7 @@ async function loadData(options = {}) {
   const hadCache = !options.force && loadDataCache();
 
   try {
-    setStatus(hadCache ? "キャッシュ表示中：裏でサーバー同期中..." : "サーバーから読み込み中...");
+    setStatus(hadCache ? "キャッシュ表示中：サーバー同期中..." : "サーバーから読み込み中...");
     const data = await apiRequest(DATA_API_URL, "list", {}, "GET", options.force ? 12000 : API_TIMEOUT_MS);
     categories = data.categories || [];
     entries = data.entries || [];
