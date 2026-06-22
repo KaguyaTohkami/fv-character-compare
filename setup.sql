@@ -55,7 +55,6 @@ insert into public.fv_categories (name, sort_order) values
   ('飲食店', 6),
   ('ギャング', 7),
   ('半グレ', 8),
-  ('企業', 9),
   ('不明', 10),
   ('その他', 11)
 on conflict (name) do nothing;
