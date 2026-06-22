@@ -1219,3 +1219,24 @@ button:disabled {
     height: 280px;
   }
 }
+
+/* v19 bottom-aligned silhouette */
+.character-visual {
+  align-items: flex-end !important;
+}
+
+.figure-image {
+  display: block;
+  align-self: flex-end;
+  object-position: center bottom !important;
+  vertical-align: bottom;
+  margin: 0 auto;
+}
+
+.characters {
+  align-items: flex-end !important;
+}
+
+.character {
+  align-self: flex-end;
+}
