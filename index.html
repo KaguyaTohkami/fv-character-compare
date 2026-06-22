@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ストグラFVキャラクター身長比較</title>
+  <title>ストグラFVキャラクター比較</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#222222" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ストグラFV比較" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
   <main class="app">
@@ -17,7 +17,7 @@
       <div class="header-main">
         <div class="header-copy">
           <h1>ストグラFVキャラクター比較</h1>
-          <p>誰でも閲覧可能。</p>
+          <p>誰でも閲覧可能。管理者・モデレーター・編集者で権限を分けて、ストグラFVキャラクターを管理できます。</p>
         </div>
         <div class="header-tools">
           <span id="headerLoginBadge" class="header-login-badge">未ログイン</span>
@@ -211,6 +211,20 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    // 古いService Workerが古い app.js を返して読み込み中で止まる対策
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+        .catch(console.warn);
+    }
+
+    if ("caches" in window) {
+      caches.keys()
+        .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+        .catch(console.warn);
+    }
+  </script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

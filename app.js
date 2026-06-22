@@ -10,6 +10,7 @@ const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 const DISPLAY_SELECTION_KEY = "fv_compare_display_selection_v1";
 const OVERLAP_MODE_KEY = "fv_compare_overlap_mode_v1";
 const DEFAULT_DISPLAY_COUNT = 5;
+const API_TIMEOUT_MS = 9000;
 
 let categories = [];
 let entries = [];
@@ -22,10 +23,28 @@ let isLoginPanelOpen = false;
 let selectedDisplayIds = [];
 let selectedDisplaySlotId = null;
 let overlapMode = localStorage.getItem(OVERLAP_MODE_KEY) || "none";
+let searchRenderTimer = null;
 
 const $ = id => document.getElementById(id);
 
 const statusPanel = $("statusPanel");
+
+function showFatalStartupError(message) {
+  const panel = document.getElementById("statusPanel");
+  if (!panel) return;
+
+  panel.textContent = `画面読み込みエラー：${message}`;
+  panel.className = "status-panel error";
+}
+
+window.addEventListener("error", event => {
+  showFatalStartupError(event.message || "JavaScriptエラー");
+});
+
+window.addEventListener("unhandledrejection", event => {
+  const reason = event.reason;
+  showFatalStartupError(reason && reason.message ? reason.message : "通信または処理に失敗しました");
+});
 const loginStatus = $("loginStatus");
 const loginPanel = $("loginPanel");
 const accountToggleButton = $("accountToggleButton");
@@ -88,6 +107,26 @@ const detailOwner = $("detailOwner");
 const detailEditButton = $("detailEditButton");
 const detailDeleteButton = $("detailDeleteButton");
 
+function safeRequiredDomCheck() {
+  const requiredIds = [
+    "statusPanel",
+    "accountToggleButton",
+    "loginButton",
+    "searchInput",
+    "filterCategory",
+    "characters",
+    "list"
+  ];
+
+  const missing = requiredIds.filter(id => !document.getElementById(id));
+
+  if (missing.length > 0) {
+    throw new Error(`必要な画面部品が見つかりません: ${missing.join(", ")}`);
+  }
+}
+
+safeRequiredDomCheck();
+
 function setStatus(message, type = "") {
   statusPanel.textContent = message;
   statusPanel.className = `status-panel ${type}`.trim();
@@ -118,10 +157,14 @@ function setToken(token) {
   }
 }
 
-async function apiRequest(baseUrl, action, body = {}, method = "POST") {
+async function apiRequest(baseUrl, action, body = {}, method = "POST", timeoutMs = API_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const options = {
     method,
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
+    signal: controller.signal
   };
 
   const token = getToken();
@@ -129,11 +172,21 @@ async function apiRequest(baseUrl, action, body = {}, method = "POST") {
 
   if (method !== "GET") options.body = JSON.stringify(body);
 
-  const response = await fetch(`${baseUrl}?action=${encodeURIComponent(action)}`, options);
-  const data = await response.json().catch(() => ({}));
+  try {
+    const response = await fetch(`${baseUrl}?action=${encodeURIComponent(action)}&t=${Date.now()}`, options);
+    const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) throw new Error(data.error || "通信に失敗しました");
-  return data;
+    if (!response.ok) throw new Error(data.error || "通信に失敗しました");
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("サーバー応答が遅いためタイムアウトしました");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function saveDataCache() {
@@ -203,8 +256,8 @@ async function loadData(options = {}) {
   const hadCache = !options.force && loadDataCache();
 
   try {
-    setStatus(hadCache ? "サーバーと同期中..." : "サーバーから読み込み中...");
-    const data = await apiRequest(DATA_API_URL, "list", {}, "GET");
+    setStatus(hadCache ? "キャッシュ表示中：裏でサーバー同期中..." : "サーバーから読み込み中...");
+    const data = await apiRequest(DATA_API_URL, "list", {}, "GET", options.force ? 12000 : API_TIMEOUT_MS);
     categories = data.categories || [];
     entries = data.entries || [];
     saveDataCache();
@@ -216,9 +269,9 @@ async function loadData(options = {}) {
     console.error(error);
 
     if (hadCache) {
-      setStatus(`サーバー同期失敗：端末キャッシュを表示中（${error.message}）`, "cached");
+      setStatus(`端末キャッシュを表示中：同期は後で再試行してください（${error.message}）`, "cached");
     } else if (loadDataCache()) {
-      setStatus(`読み込み失敗：端末キャッシュを表示中（${error.message}）`, "cached");
+      setStatus(`端末キャッシュを表示中：サーバー応答が遅いです（${error.message}）`, "cached");
     } else {
       setStatus(`読み込み失敗：${error.message}`, "error");
     }
@@ -861,18 +914,33 @@ function getSearchFilteredEntries() {
 
 function renderCandidateSelect() {
   const current = compareCandidateSelect.value;
+  const keyword = searchInput.value.trim();
+  const selectedCategory = filterCategory.value;
   const candidates = getSearchFilteredEntries();
 
   compareCandidateSelect.innerHTML = `<option value="">人物を選択</option>`;
 
-  candidates.forEach(entry => {
+  const visibleCandidates =
+    keyword || selectedCategory !== "all"
+      ? candidates.slice(0, 80)
+      : candidates.slice(0, 30);
+
+  visibleCandidates.forEach(entry => {
     const option = document.createElement("option");
     option.value = entry.id;
     option.textContent = `${entry.name} / ${formatHeight(entry.height)}cm`;
     compareCandidateSelect.appendChild(option);
   });
 
-  if (candidates.some(entry => entry.id === current)) {
+  if (candidates.length > visibleCandidates.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = `候補が多いため検索してください（${candidates.length}件）`;
+    option.disabled = true;
+    compareCandidateSelect.appendChild(option);
+  }
+
+  if (visibleCandidates.some(entry => entry.id === current)) {
     compareCandidateSelect.value = current;
   }
 }
@@ -1345,7 +1413,10 @@ cancelEditButton.addEventListener("click", () => {
 });
 
 addCategoryButton.addEventListener("click", addCategory);
-searchInput.addEventListener("input", render);
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchRenderTimer);
+  searchRenderTimer = setTimeout(render, 180);
+});
 filterCategory.addEventListener("change", render);
 compareCandidateSelect.addEventListener("change", () => {
   if (compareCandidateSelect.value) selectedDisplaySlotId = selectedDisplaySlotId || selectedDisplayIds[0] || null;

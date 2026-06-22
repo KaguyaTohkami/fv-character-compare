@@ -661,3 +661,9 @@ button:disabled { opacity: .42; cursor: not-allowed; }
     margin-left: -34px;
   }
 }
+
+/* loading fix */
+.loading-fix-note {
+  color: var(--muted);
+  font-size: 12px;
+}
