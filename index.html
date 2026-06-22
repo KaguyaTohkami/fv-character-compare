@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tohkami Scale</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#f7f7f4" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Tohkami" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="style.css?v=20" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="header-main">
+        <div class="header-copy">
+          <h1>Tohkami Scale</h1>
+          <p>ストグラFVキャラクターを、身長・カテゴリーから比較できる管理型スケールツールです。</p>
+        </div>
+        <div class="header-tools">
+          <span id="headerLoginBadge" class="header-login-badge">未ログイン</span>
+          <button id="accountToggleButton" type="button" class="header-account-button">ログイン</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="statusPanel" class="status-panel">読み込み中...</section>
+
+    <section id="loginPanel" class="panel login-panel hidden">
+      <div class="section-head">
+        <h2>アカウント</h2>
+        <span id="loginStatus" class="login-status">未ログイン</span>
+      </div>
+
+      <div id="loginForm">
+        <label>
+          ユーザーID
+          <input id="loginUsernameInput" type="text" placeholder="ユーザーID" autocomplete="username" />
+        </label>
+
+        <label>
+          パスワード
+          <input id="loginPasswordInput" type="password" placeholder="パスワード" autocomplete="current-password" />
+        </label>
+
+        <button id="loginButton" type="button" class="primary-button">ログイン</button>
+      </div>
+
+      <div id="loggedInActions" class="hidden">
+        <button id="logoutButton" type="button" class="secondary-button">ログアウト</button>
+      </div>
+    </section>
+
+    <section id="adminPanel" class="panel hidden">
+      <h2>管理者メニュー</h2>
+      <p class="form-help">
+        管理者だけがユーザーを作成・編集できます。モデレーターは全キャラ編集可、編集者は自分のキャラのみ編集可です。
+      </p>
+
+      <label>
+        ユーザーID
+        <input id="userUsernameInput" type="text" placeholder="例：editor01" />
+      </label>
+
+      <label>
+        表示名
+        <input id="userDisplayNameInput" type="text" placeholder="例：輝哉" />
+      </label>
+
+      <label>
+        権限
+        <select id="userRoleInput">
+          <option value="editor">編集者</option>
+          <option value="moderator">モデレーター</option>
+          <option value="admin">管理者</option>
+        </select>
+      </label>
+
+      <label>
+        初期/再設定パスワード
+        <input id="userPasswordInput" type="password" placeholder="新規作成または変更時に入力" />
+      </label>
+
+      <div class="form-actions">
+        <button id="createUserButton" type="button" class="primary-button">ユーザーを作成</button>
+        <button id="updateUserButton" type="button" class="secondary-button hidden">ユーザーを更新</button>
+        <button id="cancelUserEditButton" type="button" class="secondary-button hidden">ユーザー編集キャンセル</button>
+      </div>
+
+      <div class="section-head user-list-head">
+        <h3>ユーザー一覧</h3>
+        <button id="refreshUsersButton" type="button" class="small-button">更新</button>
+      </div>
+
+      <div id="userList"></div>
+    </section>
+
+    <section class="panel compare-control-panel">
+      <div class="section-head">
+        <h2>表示人物</h2>
+        <button id="displayResetButton" type="button" class="small-button">表示リセット</button>
+      </div>
+
+      <div class="compare-control-grid">
+        <label>
+          人物検索
+          <input id="searchInput" type="search" placeholder="名前で検索" aria-label="人物検索" />
+        </label>
+
+        <label>
+          表示倍率
+          <select id="displayZoomSelect" aria-label="表示倍率">
+            <option value="0.8">80%</option>
+            <option value="1">100%</option>
+            <option value="1.2">120%</option>
+            <option value="1.4">140%</option>
+          </select>
+        </label>
+
+        <label>
+          重なり
+          <select id="overlapModeSelect" aria-label="シルエットの重なり方">
+            <option value="none">被せなし</option>
+            <option value="half">半分被せ</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="displayCandidateCheckboxes" class="display-candidate-checkboxes"></div>
+    </section>
+
+    <section class="compare-area" aria-label="身長比較画面">
+      <div id="scale" class="scale"></div>
+      <div id="heightRuler" class="height-ruler"></div>
+      <div id="characters" class="characters"></div>
+    </section>
+
+    <section class="panel compact-panel filter-panel">
+      <h2>絞り込み</h2>
+<label>
+        カテゴリー
+        <select id="filterCategory">
+          <option value="all">すべて</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="section-head">
+        <h2>登録一覧</h2>
+        <button id="scrollToFormButton" type="button" class="small-button">新規追加</button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section id="formPanel" class="panel">
+      <h2 id="formTitle">キャラクター追加</h2>
+      <p id="formPermissionText" class="form-help">追加・編集にはログインが必要です。</p>
+
+      <label>
+        名前
+        <input id="nameInput" type="text" placeholder="キャラクター名" />
+      </label>
+
+      <label>
+        身長 cm
+        <input id="heightInput" type="number" step="0.1" inputmode="decimal" placeholder="例：175.5" />
+      </label>
+
+      <label>
+        性別
+        <select id="genderInput">
+          <option value="male">男性</option>
+          <option value="female">女性</option>
+        </select>
+      </label>
+<label>
+        キャラクター画像
+        <input id="imageInput" type="file" accept="image/*" />
+      </label>
+
+      <p id="imageHelpText" class="form-help">
+        画像は詳細画面に表示されます。未選択の場合は自動識別色のシルエットになります。色は登録せず、表示時に自動で割り当てます。
+      </p>
+
+      <div class="category-block">
+        <p class="label-title">カテゴリー</p>
+        <div id="categoryCheckboxes" class="category-checkboxes"></div>
+      </div>
+
+      <div class="category-add">
+        <input id="newCategoryInput" type="text" placeholder="新規カテゴリー名" />
+        <button id="addCategoryButton" type="button">追加</button>
+      </div>
+
+      <div class="draft-row">
+        <span id="draftStatusText" class="draft-status">入力内容はCookieに一時保存されます</span>
+        <button id="clearDraftButton" type="button" class="small-button">入力一時保存を削除</button>
+      </div>
+
+      <div class="form-actions">
+        <button id="submitButton" type="button" class="primary-button">キャラクター追加</button>
+        <button id="cancelEditButton" type="button" class="secondary-button hidden">編集キャンセル</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="detailModal" class="modal hidden">
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+
+    <div class="modal-content">
+      <button id="closeModalButton" class="modal-close" type="button">×</button>
+
+      <div id="detailImageArea" class="detail-image-area"></div>
+
+      <h2 id="detailName"></h2>
+
+      <div class="detail-info">
+        <p>
+          <span>身長</span>
+          <strong id="detailHeight"></strong>
+        </p>
+
+        <p>
+          <span>性別</span>
+          <strong id="detailGender"></strong>
+        </p>
+
+        <p>
+          <span>カテゴリー</span>
+          <strong id="detailCategories"></strong>
+        </p>
+
+        <p>
+          <span>登録者</span>
+          <strong id="detailOwner"></strong>
+        </p>
+      </div>
+
+      <div class="detail-actions">
+        <button id="detailEditButton" type="button">編集</button>
+        <button id="detailDeleteButton" type="button" class="danger-button">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 古いService Workerが古い app.js を返して読み込み中で止まる対策
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+        .catch(console.warn);
+    }
+
+    if ("caches" in window) {
+      caches.keys()
+        .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+        .catch(console.warn);
+    }
+  </script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>
